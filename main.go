@@ -17,6 +17,7 @@ func main() {
 	port := os.Getenv("Port")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/testAlive", TestAlive)
+	mux.HandleFunc("/joinNet", JoinNet)
 	server := &http.Server{
 		Addr:    "localhost:" + port,
 		Handler: mux,

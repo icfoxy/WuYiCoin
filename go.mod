@@ -3,7 +3,7 @@ module github.com/icfoxy/WuYiCoin
 go 1.22.2
 
 require (
-	github.com/icfoxy/GoTools v0.1.6
+	github.com/icfoxy/GoTools v0.2.1
 	github.com/joho/godotenv v1.5.1
 )
 
