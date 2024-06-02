@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"net"
 	"net/http"
 	"os"
 
@@ -11,9 +11,27 @@ import (
 
 func JoinNet(w http.ResponseWriter, r *http.Request) {
 	godotenv.Load()
-	resp, err := http.Get("http://" + os.Getenv("GuideNode") + "/getNodes")
+	transport := &http.Transport{
+		Dial: func(network, addr string) (net.Conn, error) {
+			localAddr, err := net.ResolveTCPAddr(network, "localhost:"+os.Getenv("SendPort"))
+			if err != nil {
+				return nil, err
+			}
+			remoteAddr, err := net.ResolveTCPAddr(network, addr)
+			if err != nil {
+				return nil, err
+			}
+			return net.DialTCP(network, localAddr, remoteAddr)
+		},
+		DisableKeepAlives: true,
+	}
+	client := &http.Client{
+		Transport: transport,
+	}
+	resp, err := client.Get("http://" + os.Getenv("GuideNode") + "/getNodes")
 	if err != nil {
 		GoTools.RespondByErr(w, 801, err.Error(), "high")
+		return
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == 801 {
@@ -30,12 +48,16 @@ func JoinNet(w http.ResponseWriter, r *http.Request) {
 	err = GoTools.GetAnyFromBody(resp.Body, &nodes)
 	if err != nil {
 		GoTools.RespondByErr(w, 801, err.Error(), "high")
+		return
 	}
-	for i, node := range nodes {
-		err = os.Setenv("node"+fmt.Sprint(i), node)
-		if err != nil {
-			GoTools.RespondByErr(w, 801, err.Error(), "high")
-		}
+	if len(nodes) == 0 {
+		GoTools.RespondByErr(w, 801, "missing nodes info", "low")
+		return
+	}
+	err = GoTools.DBPut("/"+os.Getenv("Port"), "nodes", nodes)
+	if err != nil {
+		GoTools.RespondByErr(w, 801, "DBPut wrong", "high")
+		return
 	}
 	GoTools.RespondByJSON(w, 200, "Done")
 }
